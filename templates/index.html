@@ -5,124 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Blackjack Web</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet"/>
-  <style>
-    html { font-size: 110%; }
-    * { margin:0; padding:0; box-sizing:border-box; }
-
-    body {
-      font-family: 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #1f1c2c, #928dab);
-      color: #fff;
-      display: flex; justify-content:center; align-items:center;
-      min-height: 100vh;
-    }
-
-    .container {
-      width:100%; max-width:450px; text-align:center;
-    }
-
-    h1 {
-      margin-bottom:20px; font-size:2.8rem;
-      text-shadow:0 2px 6px rgba(0,0,0,0.6);
-    }
-
-    .panel {
-      background: rgba(0,0,0,0.4); padding:15px; border-radius:10px;
-      margin-bottom:20px;
-    }
-    .panel > div { display:none; }
-    .panel.active .bet-ui,
-    .panel.deposit-mode .deposit-ui {
-      display:flex; gap:10px; align-items:center; justify-content:center;
-    }
-    .panel input {
-      width:80px; padding:6px; border:none; border-radius:5px; text-align:center;
-    }
-    .panel button {
-      padding:6px 12px; border:none; border-radius:5px;
-      background:rgba(255,255,255,0.3); color:#fff; cursor:pointer;
-      transition:background .3s;
-    }
-    .panel button:hover { background:rgba(255,255,255,0.5); }
-
-
-    .hand {
-      background: rgba(0,0,0,0.3); padding:20px;
-      border-radius:12px; margin:12px 0;
-      box-shadow:0 4px 12px rgba(0,0,0,0.4);
-    }
-    .hand h2 { font-size:1.6rem; margin-bottom:12px; }
-
-    .cards {
-      display:flex; justify-content:center; gap:10px;
-      margin-bottom:12px;
-    }
-    .card-slot {
-  position: relative;
-  width: 72px;
-  height: 104px;   /* aumenta para não cortar nada */
-  overflow: visible;  /* garante que não corte nem sombra */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.card-slot img {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: auto;
-  border-radius: 6px;
-  background: #fff;
-  padding: 4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  backface-visibility: hidden;
-  opacity: 1;
-  transform: translateY(-50%);
-  transition: opacity 0.3s, transform 0.6s;
-  box-sizing: content-box; /* padding não corta a carta */
-}
-    /* flip da segunda carta do dealer */
-    .cards.revealed .card-slot:nth-child(2) img.back {
-      opacity:0;
-    }
-    .cards.revealed .card-slot:nth-child(2) img.front {
-      opacity:1;
-    }
-
-    #pontos_jogador, #pontos_dealer {
-      font-weight:500; margin-top:6px;
-    }
-    #resultado {
-      font-size:1.7rem; margin:18px 0; min-height:1.7rem;
-      text-shadow:0 1px 3px rgba(0,0,0,0.5);
-    }
-
-    .controls {
-      display:flex; gap:12px; justify-content:center; margin-top:24px;
-    }
-    .controls button {
-      padding:12px 24px; font-size:1.1rem; border:none;
-      border-radius:8px; background:rgba(255,255,255,0.33);
-      color:#fff; cursor:pointer; transition:background .3s;
-    }
-    .controls button:hover { background:rgba(255,255,255,0.55); }
-    .controls button:disabled {
-      background:rgba(255,255,255,0.15); cursor:not-allowed;
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <div class="container">
+    <!-- Título -->
     <h1>Blackjack</h1>
-
+    
+    <!-- Painel de aposta e depósito -->
     <div class="panel active" id="panel">
+      <!-- UI para aposta -->
       <div class="bet-ui">
         <label>Saldo: <span id="balance">0</span></label>
         <label>Aposta:</label>
         <input type="number" id="input_bet" min="1" step="1" value="100"/>
         <button id="btn_set_bet">Definir Aposta</button>
       </div>
+      <!-- UI para depósito -->
       <div class="deposit-ui">
         <label>Saldo zerado. Deposite:</label>
         <input type="number" id="input_deposit" min="1" step="1" value="500"/>
@@ -130,20 +29,24 @@
       </div>
     </div>
 
+    <!-- Mão do Dealer -->
     <div class="hand">
       <h2>Dealer</h2>
       <div class="cards" id="dealer"></div>
       <div id="pontos_dealer"></div>
     </div>
 
+    <!-- Mão do Jogador -->
     <div class="hand">
       <h2>Jogador</h2>
       <div class="cards" id="jogador"></div>
       <div id="pontos_jogador"></div>
     </div>
 
+    <!-- Resultado da rodada -->
     <div id="resultado"></div>
 
+    <!-- Botões de controle -->
     <div class="controls">
       <button id="btn_new">Novo Jogo</button>
       <button id="btn_hit">Hit</button>
@@ -151,97 +54,6 @@
     </div>
   </div>
 
-  <script>
-    const dealerDiv   = document.getElementById('dealer');
-    const jogadorDiv  = document.getElementById('jogador');
-    const pontosD     = document.getElementById('pontos_dealer');
-    const pontosJ     = document.getElementById('pontos_jogador');
-    const resultado   = document.getElementById('resultado');
-    const btnNew      = document.getElementById('btn_new');
-    const btnHit      = document.getElementById('btn_hit');
-    const btnStand    = document.getElementById('btn_stand');
-    const panel       = document.getElementById('panel');
-    const balanceEl   = document.getElementById('balance');
-    const inBet       = document.getElementById('input_bet');
-    const btnBet      = document.getElementById('btn_set_bet');
-    const inDep       = document.getElementById('input_deposit');
-    const btnDep      = document.getElementById('btn_deposit');
-
-    const VALOR_MAP = {'A':'ace','J':'jack','Q':'queen','K':'king'};
-    const NAIPE_MAP = {'C':'clubs','D':'diamonds','H':'hearts','S':'spades'};
-
-    function cartaSrc(c) {
-      if (c==='?') return 'static/cartas/BACK.png';
-      const v=c.slice(0,-1), n=c.slice(-1);
-      const val=VALOR_MAP[v]||v.toLowerCase(), nai=NAIPE_MAP[n];
-      return `static/cartas/${val}_of_${nai}.png`;
-    }
-
-    async function atualizar(url) {
-      const res = await fetch(url);
-      const data = await res.json();
-
-      // Painel
-      if (data.balance>0) {
-        panel.classList.add('active');
-        panel.classList.remove('deposit-mode');
-        balanceEl.textContent = data.balance;
-        inBet.value = data.bet;
-      } else {
-        panel.classList.remove('active');
-        panel.classList.add('deposit-mode');
-      }
-
-      // Dealer
-      dealerDiv.innerHTML = '';
-      data.dealer.forEach((c,i)=>{
-        const slot = document.createElement('div');
-        slot.className = 'card-slot';
-        if (i===1) {
-          const back  = document.createElement('img');
-          back.src = 'static/cartas/BACK.png'; back.className='back';
-          const front = document.createElement('img');
-          front.src = cartaSrc(c); front.className='front';
-          slot.append(back, front);
-        } else {
-          const img = document.createElement('img');
-          img.src = cartaSrc(c); img.className='front';
-          slot.append(img);
-        }
-        dealerDiv.append(slot);
-      });
-      dealerDiv.className = data.mostrar_dealer?'cards revealed':'cards';
-      pontosD.textContent = data.mostrar_dealer?`Pontos: ${data.pontos_dealer}`:''; 
-
-      // Jogador
-      jogadorDiv.innerHTML = '';
-      data.jogador.forEach(c=>{
-        const slot = document.createElement('div');
-        slot.className='card-slot';
-        const img = document.createElement('img');
-        img.src = cartaSrc(c); img.className='front';
-        slot.append(img);
-        jogadorDiv.append(slot);
-      });
-      pontosJ.textContent = `Pontos: ${data.pontos_jogador}`;
-
-      // Resultado
-      resultado.textContent = data.resultado;
-
-      // Controles
-      [btnNew, btnHit, btnStand].forEach(btn=>{
-        btn.disabled = data.balance<=0;
-      });
-    }
-
-    btnBet.onclick   =()=>atualizar(`/bet?valor=${inBet.value}`);
-    btnDep.onclick   =()=>atualizar(`/deposit?amount=${inDep.value}`);
-    btnNew.onclick   =()=>atualizar('/new');
-    btnHit.onclick   =()=>atualizar('/hit');
-    btnStand.onclick =()=>atualizar('/stand');
-
-    // Init
-    atualizar('/new');
-  </script>
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
